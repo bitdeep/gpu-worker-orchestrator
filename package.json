@@ -1,7 +1,14 @@
 {
   "name": "@bitdeep/inference-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local inference clients and GPU lifecycle coordination for self-hosted workers.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bitdeep/gpu-worker-orchestrator.git"
+  },
+  "homepage": "https://github.com/bitdeep/gpu-worker-orchestrator#readme",
+  "bugs": { "url": "https://github.com/bitdeep/gpu-worker-orchestrator/issues" },
+  "keywords": ["inference", "gpu", "llm", "vllm", "whisper", "tts", "model-serving", "self-hosted"],
   "type": "module",
   "license": "MIT",
   "packageManager": "pnpm@11.24.0",

@@ -1,12 +1,35 @@
-# GPU worker orchestrator and inference SDK
+# Inference SDK: GPU orchestration for LLMs and speech
 
 Run self-hosted language, speech and embedding models from a TypeScript worker with one GPU lifecycle owner. `@bitdeep/inference-sdk` coordinates demand loading, idle unloading, speech references and inference requests while your application owns authentication, queues and customer data.
 
+[![Release](https://img.shields.io/github/v/release/bitdeep/gpu-worker-orchestrator)](https://github.com/bitdeep/gpu-worker-orchestrator/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Start here:** [Use the SDK](#use) · [Supported engines](#supported-operations) · [Architecture](https://github.com/bitdeep/gpu-worker-orchestrator/blob/main/docs/architecture.md) · [Work with me](#work-with-me)
+
+## Why use it
+
+Running each model successfully does not mean they fit together. A Whisper transcription can leave its model resident just before a voice model needs the same GPU memory. An idle timer can also interrupt a long generation if it does not share the request lock.
+
+This SDK makes those transitions explicit: one process owns GPU operations, heavy voice models yield before ASR, and Speaches can release Whisper before voice synthesis. It combines **LLM inference, speech-to-text and text-to-speech** behind a small application boundary.
+
 The SDK has no third-party runtime dependencies. Node 26 is required; FFmpeg must be available in the worker image for WAV-to-MP3 conversion and multi-part speech.
+
+```mermaid
+flowchart LR
+  A["Application: auth and queues"] --> S["Inference SDK"]
+  S --> G["Shared GPU lock and lifecycle"]
+  G --> L["vLLM"]
+  G --> W["Whisper / Speaches"]
+  G --> V["Chatterbox / Qwen3 / Kokoro"]
+  S --> E["Text Embeddings Inference"]
+```
 
 ## Use
 
-This version is prepared for local integration and is not published to a registry. In a Node 26 development container with pnpm 11.24.0 and your dependency review policy enabled, build a reviewed release from this repository:
+Download the compiled SDK from [GitHub Releases](https://github.com/bitdeep/gpu-worker-orchestrator/releases). Check the archive against `SHA256SUMS`, extract it, then verify its files against the included `MANIFEST.json`. Pin the version and manifest hash in your application's dependency import process. This package is not published to npm.
+
+To build it yourself, use a Node 26 development container with pnpm 11.24.0 and your dependency review policy enabled:
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
@@ -83,3 +106,21 @@ The reusable engine recipes live in the companion projects `vllm-serving-stack`,
 This repository contains neither a hub protocol nor an application queue. Its tests exercise adapters, reference handling, cancellation, GPU serialization and idle behavior. They do not establish throughput or hardware compatibility; measure those on the deployment hardware.
 
 After building, run `pnpm test:audio` in a container with FFmpeg to verify real conversion, concatenation and failure diagnostics using a generated tone.
+
+The initial implementation passed 60 unit tests, real FFmpeg conversion/concatenation checks, and a synthetic GPU flow covering chat, Kokoro, Chatterbox, Whisper and Qwen3, including ASR reload after voice synthesis. Embeddings and batch are covered by contract tests; that GPU flow does not establish their performance.
+
+## Companion stacks
+
+| Project | Use it for |
+|---|---|
+| [Chatterbox PT-BR](https://github.com/bitdeep/chatterbox-ptbr-server) | Brazilian Portuguese voice cloning over HTTP |
+| [vLLM serving stack](https://github.com/bitdeep/vllm-serving-stack) | OpenAI-compatible LLM serving with explicit FP8 and memory settings |
+| [Whisper ASR stack](https://github.com/bitdeep/whisper-asr-stack) | Speech recognition and corrected Speaches model unload |
+
+For `unloadBeforeHeavyTts`, use the companion Whisper image: it fixes explicit-unload locking and alias resolution in the pinned Speaches base.
+
+## Work with me
+
+I build inference infrastructure that connects models to real applications: GPU lifecycle coordination, LLM serving, speech pipelines and deployment validation. For consulting or engineering opportunities, [contact bitdeep on X](https://x.com/_wrbr).
+
+For reproducible bugs or feature requests, [open an issue](https://github.com/bitdeep/gpu-worker-orchestrator/issues) with the SDK version, engine versions and a synthetic reproduction. Keep customer data and credentials out of public issues.
