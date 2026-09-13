@@ -1,0 +1,28 @@
+{
+  "name": "@bitdeep/inference-sdk",
+  "version": "0.1.0",
+  "description": "Local inference clients and GPU lifecycle coordination for self-hosted workers.",
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.24.0",
+  "engines": { "node": ">=26.0.0 <27.0.0" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./tts/*": { "types": "./dist/tts/*.d.ts", "import": "./dist/tts/*.js" },
+    "./asr/*": { "types": "./dist/asr/*.d.ts", "import": "./dist/asr/*.js" },
+    "./lazy/*": { "types": "./dist/lazy/*.d.ts", "import": "./dist/lazy/*.js" }
+  },
+  "files": ["dist", "LICENSE", "README.md", "THIRD_PARTY.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:audio": "node tests/audio.integration.mjs",
+    "release:local": "node scripts/release.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.3",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}
