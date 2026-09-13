@@ -15,6 +15,8 @@ This SDK makes those transitions explicit: one process owns GPU operations, heav
 
 The SDK has no third-party runtime dependencies. Node 26 is required; FFmpeg must be available in the worker image for WAV-to-MP3 conversion and multi-part speech.
 
+The lifecycle design behind this SDK, with measured handoffs on a shared GPU, is chapter 04 of the [garage-inference book](https://github.com/bitdeep/garage-inference/blob/main/04-gpu-lifecycle/README.md).
+
 ```mermaid
 flowchart LR
   A["Application: auth and queues"] --> S["Inference SDK"]
