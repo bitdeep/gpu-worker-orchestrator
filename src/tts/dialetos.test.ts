@@ -41,6 +41,20 @@ describe("dialeto openai (kokoro)", () => {
 describe("dialeto chatterbox (devnen/Chatterbox-TTS-Server)", () => {
   const engine: TtsEngineConfig = { id: "chatterbox", kind: "chatterbox", url: "http://tts-chatterbox:8004", container: "c", model: "multilingual", voice: "", idleMs: 0 };
 
+  it("encaminha a calibragem explícita sem mudar a referência ou o idioma", async () => {
+    const synth = createTtsSynthesizer();
+    const fetchMock = vi.fn<FetchFn>((url) => Promise.resolve(String(url).endsWith("/get_reference_files")
+      ? Response.json([`${referencia.id}.wav`]) : resposta(mp3)));
+    const pedido = { text: "Uma voz natural.", language: "pt-BR", reference: referencia,
+      chatterbox: { exaggeration: 0.5, cfgWeight: 0.7, temperature: 0.6 } };
+    await synth(engine, pedido, 1000, fetchMock);
+    const request = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/tts"));
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      exaggeration: 0.5, cfg_weight: 0.7, temperature: 0.6, language: "pt",
+      reference_audio_filename: `${referencia.id}.wav`, seed: 7
+    });
+  });
+
   it("cadastra a referência pelo sha (uma vez) e pede clone em português com output mp3", async () => {
     const chamadas: string[] = [];
     const fetchMock = vi.fn<FetchFn>((url, init) => {

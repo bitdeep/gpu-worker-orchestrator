@@ -112,9 +112,9 @@ async function sintetizarChatterbox(engine: TtsEngineConfig, pedido: TtsSpeakReq
     split_text: true,
     chunk_size: 200,
     language: idiomaCurto(pedido.language),
-    exaggeration: 0.4,
-    cfg_weight: 0.5,
-    temperature: 0.7,
+    exaggeration: pedido.chatterbox?.exaggeration ?? 0.4,
+    cfg_weight: pedido.chatterbox?.cfgWeight ?? 0.5,
+    temperature: pedido.chatterbox?.temperature ?? 0.7,
     seed: 7
   };
   let voice: string;

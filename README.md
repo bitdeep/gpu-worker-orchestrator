@@ -100,6 +100,12 @@ For speech, configure `tts` with `id`, `kind`, `url`, `container` (empty for ext
 For OpenAI-compatible speech such as Kokoro, the request's `voice` takes precedence over the
 engine's configured default. The returned `voice` identifies the selection sent to the server.
 
+Chatterbox requests may include `chatterbox: { exaggeration, cfgWeight, temperature }`
+to tune native synthesis without changing playback speed. Omitted controls keep the
+existing defaults (0.4, 0.5, 0.7). Validate these controls at the application boundary:
+exaggeration 0.25–2, CFG 0.2–1 and temperature greater than zero up to 1.5 for the
+companion server. Compare the same reference and text when calibrating a voice.
+
 When Speaches shares a GPU with Chatterbox or Qwen3, set `asr.unloadBeforeHeavyTts: true`. After reference transcription, the SDK releases the resident Whisper model through Speaches' `/api/ps/{model_id}` endpoint before starting heavy speech inference, under the same GPU lock. Cached weights remain on disk and the next transcription reloads them. Leave this option disabled for ASR servers without that lifecycle API.
 
 Voice caches belong to a runtime instance and endpoint. A shared server and reference volume are still a shared trust boundary: separate them between customers. Lifecycle events omit prompts, audio, credentials and upstream response bodies. Credentials can be supplied to LLM/ASR/embedding endpoints through a caller-owned `headers()` function.

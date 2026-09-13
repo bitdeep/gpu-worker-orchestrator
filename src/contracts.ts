@@ -14,6 +14,8 @@ export interface TtsSpeakRequest {
   voice?: string | undefined;
   language?: string | undefined;
   reference?: TtsReference | undefined;
+  /** Native controls; playback speed belongs to the final audio composition. */
+  chatterbox?: { exaggeration: number; cfgWeight: number; temperature: number } | undefined;
 }
 
 export interface EngineEndpoint {
