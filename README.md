@@ -95,6 +95,9 @@ Use one runtime owner per GPU. Requests and idle checks share a process-local lo
 
 For speech, configure `tts` with `id`, `kind`, `url`, `container` (empty for externally managed), `model`, `voice` and `idleMs`. Qwen3 cloning requires reference text; the SDK can transcribe it using its ASR endpoint. Chatterbox references use its upload/list contract. The reference ID must identify the audio content (for example its SHA-256).
 
+For OpenAI-compatible speech such as Kokoro, the request's `voice` takes precedence over the
+engine's configured default. The returned `voice` identifies the selection sent to the server.
+
 When Speaches shares a GPU with Chatterbox or Qwen3, set `asr.unloadBeforeHeavyTts: true`. After reference transcription, the SDK releases the resident Whisper model through Speaches' `/api/ps/{model_id}` endpoint before starting heavy speech inference, under the same GPU lock. Cached weights remain on disk and the next transcription reloads them. Leave this option disabled for ASR servers without that lifecycle API.
 
 Voice caches belong to a runtime instance and endpoint. A shared server and reference volume are still a shared trust boundary: separate them between customers. Lifecycle events omit prompts, audio, credentials and upstream response bodies. Credentials can be supplied to LLM/ASR/embedding endpoints through a caller-owned `headers()` function.

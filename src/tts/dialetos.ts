@@ -38,7 +38,7 @@ export async function motorPronto(kind: TtsKind, res: Response): Promise<boolean
   }
 }
 async function sintetizarOpenAi(engine: TtsEngineConfig, pedido: TtsSpeakRequest, timeoutMs: number, fetchFn: FetchFn): Promise<RespostaDoMotor> {
-  const voice = engine.voice || pedido.voice || "alloy";
+  const voice = pedido.voice || engine.voice || "alloy";
   const res = await fetchFn(`${engine.url}/v1/audio/speech`, {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -20,13 +20,20 @@ describe("caminhoDeSaude", () => {
 
 describe("dialeto openai (kokoro)", () => {
   const engine: TtsEngineConfig = { id: "kokoro", kind: "openai", url: "http://tts:8880", container: "", model: "kokoro", voice: "pf_dora", idleMs: 0 };
-  it("manda o /v1/audio/speech de sempre com a voz do engine e ignora a referência", async () => {
+  it("respeita a voz pedida mesmo quando o engine tem outra voz padrão e ignora a referência", async () => {
     const fetchMock = vi.fn<FetchFn>(() => Promise.resolve(resposta(mp3, { headers: { "content-type": "audio/mpeg" } })));
     const out = await sintetizarNoMotor(engine, { text: "Respire.", voice: "pm_alex", reference: referencia }, 1000, fetchMock);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("http://tts:8880/v1/audio/speech");
-    expect(JSON.parse(String(init.body))).toEqual({ model: "kokoro", voice: "pf_dora", input: "Respire.", response_format: "mp3" });
+    expect(JSON.parse(String(init.body))).toEqual({ model: "kokoro", voice: "pm_alex", input: "Respire.", response_format: "mp3" });
     expect(out.contentType).toBe("audio/mpeg");
+    expect(out.voice).toBe("pm_alex");
+  });
+
+  it("usa a voz padrão somente quando o pedido não escolhe uma voz", async () => {
+    const fetchMock = vi.fn<FetchFn>(() => Promise.resolve(resposta(mp3)));
+    const out = await sintetizarNoMotor(engine, { text: "Respire." }, 1000, fetchMock);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).voice).toBe("pf_dora");
     expect(out.voice).toBe("pf_dora");
   });
 });
