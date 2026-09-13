@@ -65,6 +65,8 @@ export interface InferenceConfig {
     hotwords?: string;
     retries?: number;
     thresholds?: AsrGateThresholds;
+    /** Speaches only: release its resident Whisper model before Chatterbox/Qwen3 inference. */
+    unloadBeforeHeavyTts?: boolean;
   };
   tts?: readonly TtsEngineConfig[];
   ttsTimeoutMs?: number;

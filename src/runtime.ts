@@ -228,6 +228,16 @@ export function createInferenceRuntime(config: InferenceConfig, deps: InferenceD
     asr?.language ?? "pt"
   );
 
+  async function releaseAsrBeforeVoice(engine: TtsEngineConfig) {
+    if (!asr?.unloadBeforeHeavyTts || engine.kind === "openai") return;
+    const response = await request(`${asr.url.replace(/\/+$/, "")}/api/ps/${encodeURIComponent(asr.model)}`, {
+      method: "DELETE", headers: asr.headers?.() ?? {}, signal: AbortSignal.timeout(30_000)
+    });
+    // Speaches returns 404 when the model is already absent; weights remain cached on disk.
+    if (!response.ok && response.status !== 404) throw new Error(`ASR unload HTTP ${response.status}`);
+    state("asr", "unloaded", asr.model);
+  }
+
   async function synthesize(original: TtsSpeakRequest): Promise<SynthesizedAudio> {
     const engine = original.engine ? voices.find((entry) => entry.id === original.engine) : voices[0];
     if (!engine) throw new Error("Requested voice engine is not configured");
@@ -239,6 +249,7 @@ export function createInferenceRuntime(config: InferenceConfig, deps: InferenceD
     const missing = oQueFaltaNoPedido(engine.kind, input);
     if (missing) throw new Error(missing);
     return withGpuLock(`tts:${engine.id}`, async () => {
+      await releaseAsrBeforeVoice(engine);
       await ensureVoiceReady(engine);
       const entry = voiceStatus(engine);
       entry.lastUse = now();

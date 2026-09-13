@@ -13,6 +13,42 @@ function containers(initial: string[] = []) {
 }
 
 describe("inference runtime boundary", () => {
+  it.each([204, 404])("releases a Speaches model before starting a heavy voice engine (HTTP %s)", async (status) => {
+    const order: string[] = [];
+    const control = containers();
+    control.start.mockImplementation(async (name) => { order.push("start voice"); control.running.add(name); });
+    const request = vi.fn<typeof fetch>(async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      if (init?.method === "DELETE") {
+        expect(path).toBe("/api/ps/Systran%2Ffaster-whisper-large-v3");
+        expect(new Headers(init.headers).get("authorization")).toBe("Bearer synthetic");
+        order.push("unload asr");
+        return new Response(null, { status });
+      }
+      if (path === "/health") return Response.json({ model_ready: control.running.has("voice") }, { status: control.running.has("voice") ? 200 : 503 });
+      if (path === "/v1/voices") return init?.method === "POST" ? Response.json({ id: "vc_synthetic" }) : Response.json({ data: [] });
+      return new Response("ID3synthetic", { headers: { "content-type": "audio/mpeg" } });
+    });
+    const runtime = createInferenceRuntime({
+      asr: { url: "http://asr", model: "Systran/faster-whisper-large-v3", unloadBeforeHeavyTts: true, headers: () => ({ authorization: "Bearer synthetic" }) },
+      tts: [{ id: "voice", kind: "qwen3", url: "http://voice", container: "voice", model: "demo", voice: "", idleMs: 10 }]
+    }, { fetch: request, containers: control });
+    await runtime.synthesize({ text: "Example", reference: { id: "synthetic", mime: "audio/wav", audioBase64: "YQ==", text: "Reference" } });
+    expect(order).toEqual(["unload asr", "start voice"]);
+  });
+
+  it("does not start a heavy engine if releasing ASR fails", async () => {
+    const control = containers();
+    const request = vi.fn<typeof fetch>(async () => new Response("private engine details", { status: 409 }));
+    const runtime = createInferenceRuntime({
+      asr: { url: "http://asr", model: "whisper", unloadBeforeHeavyTts: true },
+      tts: [{ id: "voice", kind: "qwen3", url: "http://voice", container: "voice", model: "demo", voice: "", idleMs: 10 }]
+    }, { fetch: request, containers: control });
+    await expect(runtime.synthesize({ text: "Example", reference: { id: "synthetic", mime: "audio/wav", audioBase64: "YQ==", text: "Reference" } })).rejects.toThrow("ASR unload HTTP 409");
+    expect(control.start).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   it("uses caller-owned authorization for managed LLM health and inference", async () => {
     const request = vi.fn<typeof fetch>(async (url, init) => {
       expect(new Headers(init?.headers).get("authorization")).toBe("Bearer synthetic");

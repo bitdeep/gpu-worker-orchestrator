@@ -1,6 +1,6 @@
 {
   "name": "@bitdeep/inference-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local inference clients and GPU lifecycle coordination for self-hosted workers.",
   "type": "module",
   "license": "MIT",
