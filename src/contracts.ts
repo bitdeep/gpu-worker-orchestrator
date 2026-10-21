@@ -60,6 +60,8 @@ export interface ContainerControl {
 }
 
 export interface InferenceConfig {
+  /** Opt-in pair of resident operation labels. Measure combined VRAM before enabling. */
+  residentGpuOperations?: readonly string[];
   llm?: EngineEndpoint & { container?: string; idleMs?: number; keepWarm?: boolean };
   asr?: EngineEndpoint & {
     language?: string;

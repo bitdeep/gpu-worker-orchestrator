@@ -85,6 +85,20 @@ The controller permits only inspect/start/stop for the configured names. The Doc
 
 Use one runtime owner per GPU. Requests and idle checks share a process-local lock; this is not a distributed GPU scheduler. `withExclusiveGpu()` releases managed heavy voice engines and the managed LLM for a batch operation, then restores a keep-warm LLM.
 
+For continuous audio, configure `residentGpuOperations: ["llm", "stream"]`
+and submit each resident audio step with
+`withGpuLock("stream", step, { resident: true })`. The SDK permits at most
+two different resident operations at once. Each operation label remains serial.
+LLM preparation takes exclusive ownership. After the health check, it converts
+that ownership to shared ownership without releasing it. Model unload, batch
+work, and all other operations remain exclusive.
+
+Enable this option only after you measure combined GPU memory and latency on
+the target hardware. Keep the native model resident. Use an exclusive operation
+for model creation and destruction. This option does not preempt CUDA kernels
+or guarantee a deadline. The application scheduler must admit the same pair;
+an exclusive queue in front of the SDK would still delay audio.
+
 ## Supported operations
 
 | Operation | Engine contract | Behavior |

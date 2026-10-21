@@ -10,6 +10,7 @@ import type { TtsEngineConfig } from "./tts/engines.js";
 import { criarTextoDaReferencia } from "./tts/referencia.js";
 import { motoresADescarregarAntesDe, motoresPesadosADescarregar } from "./tts/residencia.js";
 import { paraMp3, precisaConverterParaMp3 } from "./tts/mp3.js";
+import { createGpuAccess } from "./gpu-access.js";
 
 function signalFor(timeoutMs: number, external?: AbortSignal): AbortSignal {
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -33,7 +34,7 @@ export function createInferenceRuntime(config: InferenceConfig, deps: InferenceD
     async start() { throw new Error("Container control is not configured"); },
     async stop() { throw new Error("Container control is not configured"); }
   };
-  let tail = Promise.resolve();
+  const access = createGpuAccess(config.residentGpuOperations);
   let lastLlmUse = 0;
   let llmWarmup: Promise<void> | null = null;
   let idleTimer: ReturnType<typeof setInterval> | undefined;
@@ -47,18 +48,21 @@ export function createInferenceRuntime(config: InferenceConfig, deps: InferenceD
     deps.onState?.(entry);
   }
 
-  function withGpuLock<T>(operation: string, fn: () => Promise<T>): Promise<T> {
-    const run = tail.then(async () => {
+  function runGpu<T>(operation: string, resident: boolean, fn: (share: () => void) => Promise<T>): Promise<T> {
+    return access.run(operation, resident, async (share) => {
       const started = now();
       deps.onEvent?.({ operation, phase: "started" });
       try {
-        return await fn();
+        return await fn(share);
       } finally {
         deps.onEvent?.({ operation, phase: "finished", durationMs: now() - started });
       }
     });
-    tail = run.then(() => undefined, () => undefined);
-    return run;
+  }
+
+  function withGpuLock<T>(operation: string, fn: () => Promise<T>,
+    options: { resident?: boolean } = {}): Promise<T> {
+    return runGpu(operation, options.resident === true, fn);
   }
 
   function voiceStatus(engine: TtsEngineConfig) {
@@ -148,11 +152,14 @@ export function createInferenceRuntime(config: InferenceConfig, deps: InferenceD
   }
 
   async function chat(messages: unknown, maxTokens: number, options: ChatOptions = {}): Promise<string> {
-    return withGpuLock("llm", async () => {
+    return runGpu("llm", false, async (share) => {
       options.signal?.throwIfAborted();
       if (!llm?.url) throw new Error("LLM endpoint is not configured");
       await ensureLlmReady();
       options.signal?.throwIfAborted();
+      // Keep the preparation lease while permitting the configured resident
+      // partner. Idle unload and every unconfigured operation still wait.
+      share();
       lastLlmUse = now();
       state("llm", "ready", llm.model);
       const body: Record<string, unknown> = {
